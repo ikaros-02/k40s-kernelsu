@@ -377,10 +377,26 @@ jobs:
       if: env.HAVE_SOURCE_BOOT_IMAGE == 'true' && env.CHECK_FILE_IS_OK == 'true'
       run: |
         cd $GITHUB_WORKSPACE/kernel_workspace
-        tools/unpack_bootimg.py --boot_img boot-source.img
-        cp android-kernel/out/arch/${{ env.ARCH }}/boot/${{ env.KERNEL_IMAGE_NAME }} out/kernel
-        tools/mkbootimg.py ${{ env.FORMAT_MKBOOTING }} -o boot.img
-        if [ -f boot.img ]; then
+        # fetch a Linux x86_64 magiskboot from the latest Magisk apk
+        wget -q -O magisk.apk https://github.com/topjohnwu/Magisk/releases/latest/download/magisk.apk
+        unzip -o -j magisk.apk lib/x86_64/libmagiskboot.so -d mb
+        chmod +x mb/libmagiskboot.so
+        MB=$GITHUB_WORKSPACE/kernel_workspace/mb/libmagiskboot.so
+        KIMG=android-kernel/out/arch/${{ env.ARCH }}/boot/${{ env.KERNEL_IMAGE_NAME }}
+        # 1) roundtrip: unpack original boot and repack WITHOUT changing kernel
+        rm -rf rt && mkdir rt && cp boot-source.img rt/boot.img && cd rt
+        $MB unpack boot.img
+        $MB repack boot.img roundtrip.img
+        cd ..
+        # 2) KSU: unpack original boot and replace ONLY the kernel
+        rm -rf kw && mkdir kw && cp boot-source.img kw/boot.img && cd kw
+        $MB unpack boot.img
+        cp ../$KIMG kernel
+        $MB repack boot.img new-boot.img
+        cd ..
+        cp kw/new-boot.img boot.img
+        cp rt/roundtrip.img roundtrip.img
+        if [ -f boot.img ] && [ -f roundtrip.img ]; then
             echo "MAKE_BOOT_IMAGE_IS_OK=true" >> $GITHUB_ENV
         else
             echo "Boot image is empty"
@@ -413,4 +429,6 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: boot${{ env.LOCALVERSION }}${{ env.UPLOADNAME }}-${{ env.DEVICE }}-${{ env.BUILD_TIME }}
-        path: kernel_workspace/boot.img
+        path: |
+          kernel_workspace/boot.img
+          kernel_workspace/roundtrip.img
