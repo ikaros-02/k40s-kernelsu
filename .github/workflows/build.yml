@@ -378,7 +378,9 @@ jobs:
       run: |
         cd $GITHUB_WORKSPACE/kernel_workspace
         # fetch a Linux x86_64 magiskboot from the latest Magisk apk
-        wget -q -O magisk.apk https://github.com/topjohnwu/Magisk/releases/latest/download/magisk.apk
+        MAGISK_URL=$(curl -s https://api.github.com/repos/topjohnwu/Magisk/releases/latest | grep browser_download_url | grep -i -E 'magisk.*\.apk' | grep -iv stub | head -1 | cut -d'"' -f4)
+        echo "Using Magisk: $MAGISK_URL"
+        wget -q -O magisk.apk "$MAGISK_URL"
         unzip -o -j magisk.apk lib/x86_64/libmagiskboot.so -d mb
         chmod +x mb/libmagiskboot.so
         MB=$GITHUB_WORKSPACE/kernel_workspace/mb/libmagiskboot.so
