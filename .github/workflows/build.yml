@@ -233,6 +233,7 @@ jobs:
           echo "$_ksu_makefile_line" >> drivers/kernelsu/Makefile; \
         done
         cat > drivers/kernelsu/expected.h <<'EOF'
+        #define KSU_COMPAT_HAS_CURRENT_SID 1
         #define KSU_COMPAT_HAS_SELINUX_STATE 1
         #define EXPECTED_SIZE 887
         #define EXPECTED_HASH "d3469712b6214462764a1d8d3e5cbe1d6819a0b62971b9f4101867821f1df64"
