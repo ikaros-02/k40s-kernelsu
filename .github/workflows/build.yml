@@ -258,8 +258,7 @@ jobs:
     - name: Setup Configuration for Kernel
       run: |
         cd $GITHUB_WORKSPACE/kernel_workspace/android-kernel
-        # Use the full munch defconfig prepared for the MiaoMiao SM8250 kernel
-        cp $GITHUB_WORKSPACE/device/munch_defconfig arch/arm64/configs/munch_defconfig
+        # perf-kernel branch already ships the official munch_defconfig; do not overwrite it
         # Add MIUI-essential filesystem and driver options
         echo "CONFIG_EROFS_FS=y" >> arch/${{ env.ARCH }}/configs/${{ env.KERNEL_CONFIG }}
         echo "CONFIG_EROFS_FS_ZIP=y" >> arch/${{ env.ARCH }}/configs/${{ env.KERNEL_CONFIG }}
