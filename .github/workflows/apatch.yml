@@ -23,22 +23,19 @@ jobs:
           curl -L -o kpimg-android "https://github.com/bmax121/KernelPatch/releases/download/0.13.9/kpimg-android"
           chmod +x kptools
           ls -l
-      - name: Unpack boot
+      - name: Unpack boot (kernel auto-decompressed)
         run: |
           set -e
           cd work
           ./magiskboot unpack boot.img
           echo "--- after unpack ---"
-          ls -l
+          ls -l kernel
           file kernel
-      - name: Decompress kernel
+      - name: Inspect kernel symbols
         run: |
           set -e
           cd work
-          mv kernel kernel.gz
-          gunzip kernel.gz
-          ls -l kernel
-          ./kptools -d -i kernel | head -6
+          ./kptools -d -i kernel | head -12
       - name: Patch kernel
         run: |
           set -e
@@ -47,13 +44,11 @@ jobs:
           ls -l kernel_patched
           echo "=== patch info ==="
           ./kptools -l -i kernel_patched | head -40
-      - name: Repack boot
+      - name: Repack boot (kernel auto-recompressed by magiskboot)
         run: |
           set -e
           cd work
-          gzip -n -9 kernel_patched
-          mv kernel_patched.gz kernel
-          file kernel
+          cp kernel_patched kernel
           ./magiskboot repack boot.img ap_boot.img
           ls -l ap_boot.img
       - name: Verify repacked image
@@ -63,8 +58,6 @@ jobs:
           mkdir verify && cd verify
           cp ../ap_boot.img .
           ../magiskboot unpack ap_boot.img
-          mv kernel kernel.gz
-          gunzip kernel.gz
           echo "=== verify patch info inside repacked boot ==="
           ../kptools -l -i kernel | head -30
       - name: Upload artifact
