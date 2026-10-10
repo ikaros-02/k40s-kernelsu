@@ -1,0 +1,74 @@
+name: Build APatch boot
+on:
+  workflow_dispatch:
+    inputs:
+      superkey:
+        description: "SuperKey（首次打开 APatch 用，登录后请改成你自己的）"
+        required: true
+        default: "K40s-APatch-2026"
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup tools
+        run: |
+          set -e
+          mkdir -p work && cd work
+          curl -L -o boot.img "https://github.com/ikaros-02/k40s-kernelsu/releases/download/base-boot/clean_stock_boot.img"
+          curl -L -o magisk.apk "https://github.com/topjohnwu/Magisk/releases/download/v27.0/Magisk-v27.0.apk"
+          unzip -o magisk.apk "lib/x86_64/libmagiskboot.so" -d magisk_extract
+          cp magisk_extract/lib/x86_64/libmagiskboot.so magiskboot
+          chmod +x magiskboot
+          curl -L -o kptools "https://github.com/bmax121/KernelPatch/releases/download/0.13.9/kptools-linux"
+          curl -L -o kpimg-android "https://github.com/bmax121/KernelPatch/releases/download/0.13.9/kpimg-android"
+          chmod +x kptools
+          ls -l
+      - name: Unpack boot
+        run: |
+          set -e
+          cd work
+          ./magiskboot unpack boot.img
+          echo "--- after unpack ---"
+          ls -l
+          file kernel
+      - name: Decompress kernel
+        run: |
+          set -e
+          cd work
+          mv kernel kernel.gz
+          gunzip kernel.gz
+          ls -l kernel
+          ./kptools -d -i kernel | head -6
+      - name: Patch kernel
+        run: |
+          set -e
+          cd work
+          ./kptools -p -i kernel -k kpimg-android -s "${{ github.event.inputs.superkey }}" -o kernel_patched
+          ls -l kernel_patched
+          echo "=== patch info ==="
+          ./kptools -l -i kernel_patched | head -40
+      - name: Repack boot
+        run: |
+          set -e
+          cd work
+          gzip -n -9 kernel_patched
+          mv kernel_patched.gz kernel
+          file kernel
+          ./magiskboot repack boot.img ap_boot.img
+          ls -l ap_boot.img
+      - name: Verify repacked image
+        run: |
+          set -e
+          cd work
+          mkdir verify && cd verify
+          cp ../ap_boot.img .
+          ../magiskboot unpack ap_boot.img
+          mv kernel kernel.gz
+          gunzip kernel.gz
+          echo "=== verify patch info inside repacked boot ==="
+          ../kptools -l -i kernel | head -30
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ap_boot
+          path: work/ap_boot.img
